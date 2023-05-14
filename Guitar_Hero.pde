@@ -1,4 +1,5 @@
 import processing.sound.*;
+import processing.serial.*;
 
 final int LEDS_NUM = 40;
 final int LEDS_COL_NUM = 4;
@@ -16,13 +17,24 @@ final color GREEN = #008000; //0 - 9 inverse (iterate backwards)
 final color YELLOW = #FFFF00;//20 - 29 inverse (iterate backwards)
 
 final ArrayList<LedStrip> ledStrips = new ArrayList<LedStrip>();
-final ArrayList<Button> buttons = new ArrayList<Button>();
+final ArrayList<Button> modeButtons = new ArrayList<Button>();
+final ArrayList<Button> easyModeButtons = new ArrayList<Button>();
+final ArrayList<Button> hardModeButtons = new ArrayList<Button>();
+final ArrayList<Note> notesPlaying = new ArrayList<Note>();
+
 Song song;
 SoundFile buttonSound, songFile;
+boolean songUploaded = false;
+int score = 0;
+String globalScene;
+
+Serial myPort;
 
 //initialize
 void setup() {
   size(1080,720);
+  //myPort = new Serial(this, "COM3", 9600);
+  globalScene = "modeSelector";
   buttonSound = new SoundFile(this, "buttonSoundEffect.mp3");
   songFile = new SoundFile(this, "songs/Be Quiet And Drive.mp3");
   int startPoint = CENTER_X;
@@ -55,20 +67,42 @@ void setup() {
       ledStrip.leds.add(led);
     }
   }
+  Button easyModeButton = new MenuButton(CENTER_X/2 - 200, CENTER_Y/2 - 70, 180, 60, "Easy","easy");
+  Button hardModeButton = new MenuButton(CENTER_X/2 + 20, CENTER_Y/2 - 70, 180, 60, "Hard","hard");
+  Button backButton = new MenuButton(1000, 20, 60, 60, "Back","modeSelector");  
+  
   Button playButton = new PlayButton(CENTER_X/2 - 90, CENTER_Y/2 - 70, 180, 60, "Play");
-  Button songButton = new SongButton(CENTER_X/2 - 90, CENTER_Y/2 + 10, 180, 60, "Be Quiet And Drive");
-  buttons.add(playButton);
-  buttons.add(songButton);
+  Button hardSong1 = new SongButton(CENTER_X/2 - 90, CENTER_Y/2, 180, 60, "Be Quiet And Drive");
+  Button hardSong2 = new SongButton(CENTER_X/2 - 90, CENTER_Y/2 + 70, 180, 60, "Dear Rosemary");
+  Button easySong1 = new SongButton(CENTER_X/2 - 90, CENTER_Y/2, 180, 60, "Track 1");
+  Button easySong2 = new SongButton(CENTER_X/2 - 90, CENTER_Y/2 + 70, 180, 60, "Track 2");
+
+  modeButtons.add(easyModeButton);
+  modeButtons.add(hardModeButton);
+  modeButtons.add(backButton);
+  
+  easyModeButtons.add(playButton);
+  easyModeButtons.add(backButton);
+  easyModeButtons.add(easySong1);
+  easyModeButtons.add(easySong2);
+  hardModeButtons.add(playButton);
+  hardModeButtons.add(backButton);
+  hardModeButtons.add(hardSong1);
+  hardModeButtons.add(hardSong2);
 }
 
 //loop
 void draw() {
   setGradient(0, 0, 1080, 720, PURPLE, NEON_BLUE);
   drawLeds();
-  //playNotes();
   drawButtons();
+  if(songUploaded) {
+    drawSong();
+  }
+  drawNotes();
 }
 
+//gradient background
 void setGradient(int x, int y, float w, float h, color c1, color c2) {
   noFill();
   for (int i = x; i <= x+w; i++) {
@@ -80,9 +114,25 @@ void setGradient(int x, int y, float w, float h, color c1, color c2) {
 }
 
 void mousePressed() {
-  for(Button bt : buttons){
-    if(bt.isInside(mouseX, mouseY)) {
-      bt.onClick();
+  if(globalScene.equals("modeSelector")) {
+    for(Button bt : modeButtons){
+      if(bt.isInside(mouseX, mouseY)) {
+        bt.onClick();
+      }
+    }
+  }
+  else if(globalScene.equals("easy")) {
+    for(Button bt : easyModeButtons){
+      if(bt.isInside(mouseX, mouseY)) {
+        bt.onClick();
+      }
+    }
+  }
+  else if(globalScene.equals("hard")) {
+    for(Button bt : hardModeButtons){
+      if(bt.isInside(mouseX, mouseY)) {
+        bt.onClick();
+      }
     }
   }
 }
@@ -93,6 +143,7 @@ void keyPressed() {
     if(ledStrips.get(0).leds.get(9).opacity == 255) {
       println("acierto Q");
       buttonSound.play(1, 0.05);
+      score++;
     }
     else{
       println("fallo Q"); 
@@ -102,6 +153,7 @@ void keyPressed() {
     if(ledStrips.get(1).leds.get(9).opacity == 255) {
       println("acierto W");
       buttonSound.play(1,0.05);
+      score++;
     }
     else{
       println("fallo W"); 
@@ -111,6 +163,7 @@ void keyPressed() {
     if(ledStrips.get(2).leds.get(9).opacity == 255) {
       println("acierto E");
       buttonSound.play(1, 0.05);
+      score++;
     }
     else{
       println("fallo E"); 
@@ -120,6 +173,7 @@ void keyPressed() {
     if(ledStrips.get(3).leds.get(9).opacity == 255) {
       println("acierto R");
       buttonSound.play(1, 0.05);
+      score++;
     }
     else{
       println("fallo R"); 
@@ -137,13 +191,58 @@ void drawLeds() {
 }
 
 void drawButtons() {
-  for(Button bt : buttons){
-    bt.draw();
+  if(globalScene.equals("modeSelector")) {
+    for(Button bt : modeButtons){
+      bt.draw();
+    }
+  }
+  else if(globalScene.equals("easy")) {
+    for(Button bt : easyModeButtons){
+      bt.draw();
+    }
+  }
+  else if(globalScene.equals("hard")) {
+    for(Button bt : hardModeButtons){
+      bt.draw();
+    }
+  }
+}
+
+void drawSong() {
+  if(song.isPlaying && !song.hasPlayed) {
+    song.draw();
+  }
+  if(song.isPlaying && song.hasPlayed && song.finishDelay <= millis()) {
+      song.isPlaying = false;
+      println("Song finished");
+      println("Score: " + score);
+    }
+}
+
+void drawNotes() {
+  boolean[] removableNotes = new boolean[notesPlaying.size()];
+  int i = 0;
+  //check if notes are still playing and draw them
+  for(Note nt : notesPlaying){
+    if(!nt.notePlayed) {
+      nt.draw();
+      removableNotes[i] = false;
+    }
+    else {
+      removableNotes[i] = true;
+    }
+    i++;
+  }
+  //remove finished notes
+  for(int it = 0; it < notesPlaying.size(); it++) {
+    if(removableNotes[it]) {
+      notesPlaying.remove(it);
+    }
   }
 }
 
 void playSong() {
-  delay(2160);
+  delay(2500);
   songFile.play(1, 0.5);
 }
 
@@ -183,6 +282,10 @@ class Led {
     this.ledColor = ledColor;
     this.ledPos = ledPos;
     this.opacity = opacity;
+  }
+   
+  void changeColor(color c1) {
+    this.ledColor = c1;
   }
    
   void draw() {
@@ -231,15 +334,32 @@ class Button {
   }
 }
 
-class PlayButton extends Button{
+class MenuButton extends Button {
+  String scene;
+  
+  public MenuButton(float x, float y, int rectWidth, int rectHeight, String text, String scene) {
+    super(x, y, rectWidth, rectHeight, text);
+    this.scene = scene;
+  }
+  
+  void onClick() {
+    globalScene = this.scene;
+  }
+}
+
+class PlayButton extends Button {
   
   public PlayButton(float x, float y, int rectWidth, int rectHeight, String text) {
     super(x, y, rectWidth, rectHeight, text);
   }
   
   void onClick() {
+    if(globalScene.equals("hard")) {
+      thread("playSong");
+    }
+    song.isPlaying = true; 
+    /*
     int i = 0;
-    thread("playSong");
     for(Note nt : song.notes) {
       if(i < 3) {
         println("delay: " + (nt.delay*1000));
@@ -248,21 +368,32 @@ class PlayButton extends Button{
         thread.start();
         i++;
       }
-    }
+    }*/
   }
 }
 
-class SongButton extends Button{
+class SongButton extends Button {
   
   public SongButton(float x, float y, int rectWidth, int rectHeight, String text) {
     super(x, y, rectWidth, rectHeight, text);
   }
   
   void onClick() {
-    song = this.readFile("charts/" + this.text + ".chart");
+    song = this.readFile(this.text, globalScene);
+    songUploaded = true;
   }
   
-  Song readFile(String fileName) {
+  //input: Guitar Hero chart (any song in .chart format) output: playable song
+  Song readFile(String fileName, String mode) {
+    if(mode.equals("easy")){
+      return parseTextFile("customCharts/" + fileName + ".txt");
+    }
+    else {
+      return parseChartFile("charts/" + fileName + ".chart");
+    }
+  }
+  
+  Song parseChartFile(String fileName) {
     String songTitle = "";
     String artist = "";
     int resolution = 0;
@@ -306,7 +437,23 @@ class SongButton extends Button{
     }
     println("Song: " + songTitle + " by " + artist);
     println("Resolution: " + resolution);
-    return new Song(122.5, resolution, songTitle, artist, notes);
+    return new Song(122.5, resolution, songTitle, artist, notes, 0.25);
+  }
+  
+  Song parseTextFile(String fileName) {
+    String artist = "Anon";
+    String songTitle = fileName;
+    int tick = 0;
+    float delay = 0.5;
+    ArrayList<Note> notes = new ArrayList<Note>();
+    String[] lines = loadStrings(fileName);
+    for (int i = 0 ; i < lines.length; i++) {
+        println(lines[i]);
+        notes.add(new Note(tick, Integer.parseInt(lines[i]), delay));
+        tick += 250;
+    }
+    println("Song: " + songTitle + " by " + artist);
+    return new Song(0, 0, fileName, artist, notes, delay);
   }
 }
 
@@ -316,14 +463,43 @@ class Song {
   int resolution;
   String title;
   String artist;
+  int noteCount;
+  int nextMillis;
+  boolean isPlaying;
+  boolean hasPlayed;
+  int finishDelay;
+  float noteDelay;
   
-  public Song(float BPM, int resolution, String title, String artist, ArrayList<Note> notes) {
+  public Song(float BPM, int resolution, String title, String artist, ArrayList<Note> notes, float noteDelay) {
     this.BPM = BPM;
     this.resolution = resolution;
     this.title = title;
     this.artist = artist;
+    this.noteCount = 0;
+    this.nextMillis = millis();
+    this.isPlaying = false;
+    this.hasPlayed = false;
+    this.noteDelay = noteDelay;
+    this.finishDelay = 0;
     for(Note nt : notes) {
       this.notes.add(new Note(nt));
+    }
+  }
+  
+  void draw() {
+    if(this.nextMillis <= millis()){
+      if(song.notes.size() == this.noteCount) {
+        this.hasPlayed = true;
+        this.finishDelay = millis() + (int)(this.noteDelay * 10000);
+      }
+      else {
+        Note nt = song.notes.get(this.noteCount);
+        nt = song.notes.get(this.noteCount);
+        this.nextMillis = millis() + (int)(nt.delay * 1000);
+        //println(this.nextMillis);
+        notesPlaying.add(nt);
+      }
+      this.noteCount++;
     }
   }
 }
@@ -333,12 +509,16 @@ class Note {
   int column;
   float delay;
   boolean notePlayed;
+  int ledCount;
+  int nextMillis;
   
   public Note(int position, int column, float delay) {
     this.position = position;
     this.column = column;
     this.delay = delay;
     this.notePlayed = false;
+    this.ledCount = 0;
+    this.nextMillis = millis();
   }
   
   //Copy Constructor
@@ -348,8 +528,77 @@ class Note {
     this.delay = nt.delay;
     this.notePlayed = nt.notePlayed;
   }
+  
+  void draw(){
+    LedStrip ledStrip = ledStrips.get(this.column);
+    if(this.ledCount < 10) {
+      Led led = ledStrip.leds.get(this.ledCount);
+      if(this.column == 0) {
+        if(this.nextMillis <= millis()){
+          this.nextMillis = millis() + 250;
+          //myPort.write(led.ledPos);
+          led.changeColor(GREEN);
+          led.opacity = 255;
+          if (this.ledCount != 0) {
+            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+            prevLed.changeColor(WHITE);
+          }
+          this.ledCount++;
+        }
+      }
+      else if(this.column == 1) {
+        if(nextMillis <= millis()){
+          //println("in: " + this.position + ", led: " + led.ledPos + ", millis:" + millis());
+          this.nextMillis = millis() + 250;
+          //myPort.write(led.ledPos);
+          led.changeColor(RED);
+          led.opacity = 255;
+          if (this.ledCount != 0) {
+            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+            prevLed.changeColor(WHITE);
+          }
+          this.ledCount++;
+        }
+      }
+      else if(this.column == 2) {
+        if(this.nextMillis <= millis()){
+          this.nextMillis = millis() + 250;
+          //myPort.write(led.ledPos);
+          led.changeColor(YELLOW);
+          led.opacity = 255;
+          if (this.ledCount != 0) {
+            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+            prevLed.changeColor(WHITE);
+          }
+          this.ledCount++;
+        }
+      }
+      else {
+        if(this.nextMillis <= millis()){
+          this.nextMillis = millis() + 250;
+          //myPort.write(led.ledPos);
+          led.changeColor(BLUE);
+          led.opacity = 255;
+          if (this.ledCount != 0) {
+            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+            prevLed.changeColor(WHITE);
+          }
+          this.ledCount++;
+        }
+      }
+    }
+    else if(this.ledCount == 10) {
+      Led led = ledStrip.leds.get(9);
+      if(this.nextMillis <= millis()) {
+        led.opacity = 127;
+        this.ledCount = 0;
+        this.notePlayed = true;
+      }
+    }
+  }
 }
 
+//Thread class implemented to play notes with thread -> good try but threads doesn't work well in processing
 class NotePlayer extends Thread {
   final Note nt;
   
@@ -358,11 +607,12 @@ class NotePlayer extends Thread {
   }
   
   public void run() {
-    LedStrip ledStrip = ledStrips.get(nt.column);
-      println("playing");
-      for(int i = 0; i < 10; i++) {
-        if(nt.column == 0) {
-          Led led = ledStrip.leds.get(i);
+    LedStrip ledStrip = ledStrips.get(this.nt.column);
+    println("playing");
+    for(int i = 0; i < 10; i++) {
+      if(this.nt.column == 0) {
+        Led led = ledStrip.leds.get(i);
+        synchronized(led) {
           led.ledColor = GREEN;
           led.opacity = 255;
           delay(240);
@@ -373,8 +623,10 @@ class NotePlayer extends Thread {
             led.opacity = 127; 
           }
         }
-        else if(nt.column == 1) {
-          Led led = ledStrip.leds.get(i);
+      }
+      else if(this.nt.column == 1) {
+        Led led = ledStrip.leds.get(i);
+        synchronized(led) {
           led.ledColor = RED;
           led.opacity = 255;
           delay(240);
@@ -385,8 +637,10 @@ class NotePlayer extends Thread {
             led.opacity = 127; 
           }
         }
-        else if(nt.column == 2) {
-          Led led = ledStrip.leds.get(i);
+      }
+      else if(this.nt.column == 2) {
+        Led led = ledStrip.leds.get(i);
+        synchronized(led) {
           led.ledColor = YELLOW;
           led.opacity = 255;
           delay(240);
@@ -397,8 +651,10 @@ class NotePlayer extends Thread {
             led.opacity = 127; 
           }
         }
-        else {
-          Led led = ledStrip.leds.get(i);
+      }
+      else {
+        Led led = ledStrip.leds.get(i);
+        synchronized(led) {
           led.ledColor = BLUE;
           led.opacity = 255;
           delay(240);
@@ -410,7 +666,8 @@ class NotePlayer extends Thread {
           }
         }
       }
-      nt.notePlayed = true;
-      println("played");
+    }
+    nt.notePlayed = true;
+    println("played");
   }
 }
