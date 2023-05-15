@@ -23,9 +23,9 @@ final ArrayList<Button> hardModeButtons = new ArrayList<Button>();
 final ArrayList<Note> notesPlaying = new ArrayList<Note>();
 
 Song song;
-SoundFile buttonSound, songFile;
+SoundFile buttonSound, songFile1, songFile2;
 boolean songUploaded = false;
-int score = 0;
+int score;
 String globalScene;
 
 Serial myPort;
@@ -36,7 +36,9 @@ void setup() {
   //myPort = new Serial(this, "COM3", 9600);
   globalScene = "modeSelector";
   buttonSound = new SoundFile(this, "buttonSoundEffect.mp3");
-  songFile = new SoundFile(this, "songs/Be Quiet And Drive.mp3");
+  songFile1 = new SoundFile(this, "songs/Be Quiet And Drive.mp3");
+  songFile2 = new SoundFile(this, "songs/Dear Rosemary.mp3");
+  int score = 0;
   int startPoint = CENTER_X;
   int ledStripSeparator = 80;
   int ledSeparator = 48;
@@ -141,42 +143,42 @@ void keyPressed() {
   
   if(key == 'q' || key == 'Q') {
     if(ledStrips.get(0).leds.get(9).on) {
-      println("acierto Q");
+      println("Good Green! :)");
       buttonSound.play(1, 0.05);
       score++;
     }
     else{
-      println("fallo Q"); 
+      println("Miss Green :("); 
     }
   }
   else if(key == 'w' || key == 'W') {
     if(ledStrips.get(1).leds.get(9).on) {
-      println("acierto W");
+      println("Good Red! :)");
       buttonSound.play(1,0.05);
       score++;
     }
     else{
-      println("fallo W"); 
+      println("Miss Red! :("); 
     }
   }
   else if(key == 'e' || key == 'E') {
     if(ledStrips.get(2).leds.get(9).on) {
-      println("acierto E");
+      println("Good Yellow! :)");
       buttonSound.play(1, 0.05);
       score++;
     }
     else{
-      println("fallo E"); 
+      println("Miss Yellow :("); 
     }
   }
   else if(key == 'r' || key == 'R') {
     if(ledStrips.get(3).leds.get(9).on) {
-      println("acierto R");
+      println("Good Blue! :)");
       buttonSound.play(1, 0.05);
       score++;
     }
     else{
-      println("fallo R"); 
+      println("Miss Blue :("); 
     }
   }
 }
@@ -231,7 +233,9 @@ void drawNotes() {
     else {
       removableNotes[i] = true;
       Led led = ledStrips.get(nt.column).leds.get(9);
-      led.on = false;
+      if(!nt.followUp) {
+        led.on = false;
+      }
     }
     i++;
   }
@@ -244,8 +248,13 @@ void drawNotes() {
 }
 
 void playSong() {
-  delay(2500);
-  songFile.play(1, 0.5);
+  //delay(song.notes.get(0).delayBtLeds * 10);
+  if(song.title.equals("Be Quiet and Drive (Far Away)")) {
+    songFile1.play(1, 0.5);
+  }
+  else if(song.title.equals("Dear Rosemary")) {
+    songFile2.play(1, 0.5);
+  }
 }
 
 class LedStrip {
@@ -359,10 +368,11 @@ class PlayButton extends Button {
   
   void onClick() {
     if(globalScene.equals("hard")) {
-      thread("playSong");
+      playSong();
     }
     song.isPlaying = true; 
     /*
+    //Code for thread play (doesn't work well because of processing's thread managment)
     int i = 0;
     for(Note nt : song.notes) {
       if(i < 3) {
@@ -384,6 +394,12 @@ class SongButton extends Button {
   
   void onClick() {
     song = this.readFile(this.text, globalScene);
+    if(song.title.equals("Be Quiet and Drive (Far Away)")) {
+      songFile2.stop();
+    }
+    else if(song.title.equals("Dear Rosemary")) {
+      songFile1.stop();
+    }
     songUploaded = true;
   }
   
@@ -420,9 +436,6 @@ class SongButton extends Button {
       else {
         int tick = Integer.parseInt(join(split(splitted[0], " "),""));
         String[] data = splitTokens(splitted[1]," ");
-        if(data.length == 2) {
-          
-        }
         if(data.length == 3) {
           if(Integer.parseInt(data[1]) <= 3) {
             //println(tick);
@@ -433,11 +446,10 @@ class SongButton extends Button {
             else {
               delay = 60 / 122.5 * (tick - notes.get(notes.size() - 1).position) / resolution;
             }
-            notes.add(new Note(tick, Integer.parseInt(data[1]), delay));
+            notes.add(new Note(tick, Integer.parseInt(data[1]), delay, false));
           }
         }
       }
-      //println(splitted[1]);
     }
     println("Song: " + songTitle + " by " + artist);
     println("Resolution: " + resolution);
@@ -452,8 +464,17 @@ class SongButton extends Button {
     ArrayList<Note> notes = new ArrayList<Note>();
     String[] lines = loadStrings(fileName);
     for (int i = 0 ; i < lines.length; i++) {
-        println(lines[i]);
-        notes.add(new Note(tick, Integer.parseInt(lines[i]), delay));
+        if( i != lines.length - 1) {
+          if(Integer.parseInt(lines[i]) == Integer.parseInt(lines[i + 1])) {
+            notes.add(new Note(tick, Integer.parseInt(lines[i]), delay, true));
+          }
+          else {
+            notes.add(new Note(tick, Integer.parseInt(lines[i]), delay, false));
+          }
+        }
+        else {
+          notes.add(new Note(tick, Integer.parseInt(lines[i]), delay, false));
+        }
         tick += 250;
     }
     println("Song: " + songTitle + " by " + artist);
@@ -500,7 +521,6 @@ class Song {
         Note nt = this.notes.get(this.noteCount);
         nt = this.notes.get(this.noteCount);
         this.nextMillis = millis() + (int)(nt.delay * 1000);
-        //println(this.nextMillis);
         notesPlaying.add(nt);
       }
       this.noteCount++;
@@ -515,16 +535,25 @@ class Note {
   boolean notePlayed;
   int ledCount;
   int nextMillis;
+  boolean followUp;
+  int delayBtLeds;
   //easy -> followUp var
   //hard -> delay between leds = 200
   
-  public Note(int position, int column, float delay) {
+  public Note(int position, int column, float delay, boolean followUp) {
     this.position = position;
     this.column = column;
     this.delay = delay;
+    this.followUp = followUp;
     this.notePlayed = false;
     this.ledCount = 0;
     this.nextMillis = millis();
+    if(globalScene.equals("easy")) {
+      this.delayBtLeds = 500;
+    }
+    else if(globalScene.equals("hard")) {
+      this.delayBtLeds = 220;
+    } 
   }
   
   //Copy Constructor
@@ -532,7 +561,11 @@ class Note {
     this.position = nt.position;
     this.column = nt.column;
     this.delay = nt.delay;
+    this.followUp = nt.followUp;
     this.notePlayed = nt.notePlayed;
+    this.ledCount = nt.ledCount;
+    this.nextMillis = nt.nextMillis;
+    this.delayBtLeds = nt.delayBtLeds;
   }
   
   void draw(){
@@ -541,81 +574,68 @@ class Note {
       Led led = ledStrip.leds.get(this.ledCount);
       if(this.column == 0) {
         if(this.nextMillis <= millis()){
-          if(globalScene.equals("easy")) {
-            this.nextMillis = millis() + 500;
-          }
-          else if(globalScene.equals("hard")) {
-            this.nextMillis = millis() + 250;
-          }
+          this.nextMillis = millis() + this.delayBtLeds;
           //myPort.write(led.ledPos);
           led.changeColor(GREEN);
           led.opacity = 255;
           led.on = true;
           if (this.ledCount != 0) {
-            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
-            prevLed.changeColor(WHITE);
-            prevLed.on = false;
+            if(!this.followUp){
+              Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+              prevLed.changeColor(WHITE);
+              prevLed.on = false;
+            }
           }
           this.ledCount++;
         }
       }
       else if(this.column == 1) {
         if(nextMillis <= millis()){
-          //println("in: " + this.position + ", led: " + led.ledPos + ", millis:" + millis());
-          if(globalScene.equals("easy")) {
-            this.nextMillis = millis() + 500;
-          }
-          else if(globalScene.equals("hard")) {
-            this.nextMillis = millis() + 250;
-          }
+          this.nextMillis = millis() + this.delayBtLeds;
           //myPort.write(led.ledPos);
           led.changeColor(RED);
           led.opacity = 255;
           led.on = true;
           if (this.ledCount != 0) {
-            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
-            prevLed.changeColor(WHITE);
-            prevLed.on = false;
+            if(!this.followUp){
+              Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+              prevLed.changeColor(WHITE);
+              prevLed.on = false;
+            }
           }
           this.ledCount++;
         }
       }
       else if(this.column == 2) {
         if(this.nextMillis <= millis()){
-          if(globalScene.equals("easy")) {
-            this.nextMillis = millis() + 500;
-          }
-          else if(globalScene.equals("hard")) {
-            this.nextMillis = millis() + 250;
-          }
+          this.nextMillis = millis() + this.delayBtLeds;
           //myPort.write(led.ledPos);
           led.changeColor(YELLOW);
           led.opacity = 255;
           led.on = true;
           if (this.ledCount != 0) {
-            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
-            prevLed.changeColor(WHITE);
-            prevLed.on = false;
+            if(!this.followUp){
+              Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+              prevLed.changeColor(WHITE);
+              prevLed.on = false;
+            }
           }
           this.ledCount++;
         }
       }
       else {
         if(this.nextMillis <= millis()){
-          if(globalScene.equals("easy")) {
-            this.nextMillis = millis() + 500;
-          }
-          else if(globalScene.equals("hard")) {
-            this.nextMillis = millis() + 250;
-          }
+          this.nextMillis = millis() + this.delayBtLeds;
           //myPort.write(led.ledPos);
           led.changeColor(BLUE);
           led.opacity = 255;
           led.on = true;
           if (this.ledCount != 0) {
-            Led prevLed = ledStrip.leds.get(this.ledCount - 1);
-            prevLed.changeColor(WHITE);
-            prevLed.on = false;
+            if(!this.followUp){
+              Led prevLed = ledStrip.leds.get(this.ledCount - 1);
+              prevLed.changeColor(WHITE);
+              prevLed.on = false;
+            }
           }
           this.ledCount++;
         }
@@ -631,6 +651,7 @@ class Note {
   }
 }
 
+/*
 //Thread class implemented to play notes with thread -> good try but threads doesn't work well in processing
 class NotePlayer extends Thread {
   final Note nt;
@@ -704,3 +725,4 @@ class NotePlayer extends Thread {
     println("played");
   }
 }
+*/
