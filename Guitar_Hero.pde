@@ -140,7 +140,7 @@ void mousePressed() {
 void keyPressed() {
   
   if(key == 'q' || key == 'Q') {
-    if(ledStrips.get(0).leds.get(9).opacity == 255) {
+    if(ledStrips.get(0).leds.get(9).on) {
       println("acierto Q");
       buttonSound.play(1, 0.05);
       score++;
@@ -150,7 +150,7 @@ void keyPressed() {
     }
   }
   else if(key == 'w' || key == 'W') {
-    if(ledStrips.get(1).leds.get(9).opacity == 255) {
+    if(ledStrips.get(1).leds.get(9).on) {
       println("acierto W");
       buttonSound.play(1,0.05);
       score++;
@@ -160,7 +160,7 @@ void keyPressed() {
     }
   }
   else if(key == 'e' || key == 'E') {
-    if(ledStrips.get(2).leds.get(9).opacity == 255) {
+    if(ledStrips.get(2).leds.get(9).on) {
       println("acierto E");
       buttonSound.play(1, 0.05);
       score++;
@@ -170,7 +170,7 @@ void keyPressed() {
     }
   }
   else if(key == 'r' || key == 'R') {
-    if(ledStrips.get(3).leds.get(9).opacity == 255) {
+    if(ledStrips.get(3).leds.get(9).on) {
       println("acierto R");
       buttonSound.play(1, 0.05);
       score++;
@@ -230,10 +230,12 @@ void drawNotes() {
     }
     else {
       removableNotes[i] = true;
+      Led led = ledStrips.get(nt.column).leds.get(9);
+      led.on = false;
     }
     i++;
   }
-  //remove finished notes
+  //remove finished notes  
   for(int it = 0; it < notesPlaying.size(); it++) {
     if(removableNotes[it]) {
       notesPlaying.remove(it);
@@ -275,6 +277,7 @@ class Led {
   color ledColor;
   int opacity;
   int ledPos;
+  boolean on;
 
   public Led(float x, float y, color ledColor, int ledPos, int opacity) {
     this.x = x;
@@ -282,6 +285,7 @@ class Led {
     this.ledColor = ledColor;
     this.ledPos = ledPos;
     this.opacity = opacity;
+    this.on = false;
   }
    
   void changeColor(color c1) {
@@ -488,13 +492,13 @@ class Song {
   
   void draw() {
     if(this.nextMillis <= millis()){
-      if(song.notes.size() == this.noteCount) {
+      if(this.notes.size() == this.noteCount) {
         this.hasPlayed = true;
         this.finishDelay = millis() + (int)(this.noteDelay * 10000);
       }
       else {
-        Note nt = song.notes.get(this.noteCount);
-        nt = song.notes.get(this.noteCount);
+        Note nt = this.notes.get(this.noteCount);
+        nt = this.notes.get(this.noteCount);
         this.nextMillis = millis() + (int)(nt.delay * 1000);
         //println(this.nextMillis);
         notesPlaying.add(nt);
@@ -511,6 +515,8 @@ class Note {
   boolean notePlayed;
   int ledCount;
   int nextMillis;
+  //easy -> followUp var
+  //hard -> delay between leds = 200
   
   public Note(int position, int column, float delay) {
     this.position = position;
@@ -535,13 +541,20 @@ class Note {
       Led led = ledStrip.leds.get(this.ledCount);
       if(this.column == 0) {
         if(this.nextMillis <= millis()){
-          this.nextMillis = millis() + 250;
+          if(globalScene.equals("easy")) {
+            this.nextMillis = millis() + 500;
+          }
+          else if(globalScene.equals("hard")) {
+            this.nextMillis = millis() + 250;
+          }
           //myPort.write(led.ledPos);
           led.changeColor(GREEN);
           led.opacity = 255;
+          led.on = true;
           if (this.ledCount != 0) {
             Led prevLed = ledStrip.leds.get(this.ledCount - 1);
             prevLed.changeColor(WHITE);
+            prevLed.on = false;
           }
           this.ledCount++;
         }
@@ -549,49 +562,69 @@ class Note {
       else if(this.column == 1) {
         if(nextMillis <= millis()){
           //println("in: " + this.position + ", led: " + led.ledPos + ", millis:" + millis());
-          this.nextMillis = millis() + 250;
+          if(globalScene.equals("easy")) {
+            this.nextMillis = millis() + 500;
+          }
+          else if(globalScene.equals("hard")) {
+            this.nextMillis = millis() + 250;
+          }
           //myPort.write(led.ledPos);
           led.changeColor(RED);
           led.opacity = 255;
+          led.on = true;
           if (this.ledCount != 0) {
             Led prevLed = ledStrip.leds.get(this.ledCount - 1);
             prevLed.changeColor(WHITE);
+            prevLed.on = false;
           }
           this.ledCount++;
         }
       }
       else if(this.column == 2) {
         if(this.nextMillis <= millis()){
-          this.nextMillis = millis() + 250;
+          if(globalScene.equals("easy")) {
+            this.nextMillis = millis() + 500;
+          }
+          else if(globalScene.equals("hard")) {
+            this.nextMillis = millis() + 250;
+          }
           //myPort.write(led.ledPos);
           led.changeColor(YELLOW);
           led.opacity = 255;
+          led.on = true;
           if (this.ledCount != 0) {
             Led prevLed = ledStrip.leds.get(this.ledCount - 1);
             prevLed.changeColor(WHITE);
+            prevLed.on = false;
           }
           this.ledCount++;
         }
       }
       else {
         if(this.nextMillis <= millis()){
-          this.nextMillis = millis() + 250;
+          if(globalScene.equals("easy")) {
+            this.nextMillis = millis() + 500;
+          }
+          else if(globalScene.equals("hard")) {
+            this.nextMillis = millis() + 250;
+          }
           //myPort.write(led.ledPos);
           led.changeColor(BLUE);
           led.opacity = 255;
+          led.on = true;
           if (this.ledCount != 0) {
             Led prevLed = ledStrip.leds.get(this.ledCount - 1);
             prevLed.changeColor(WHITE);
+            prevLed.on = false;
           }
           this.ledCount++;
         }
       }
     }
     else if(this.ledCount == 10) {
-      Led led = ledStrip.leds.get(9);
-      if(this.nextMillis <= millis()) {
+      if(this.nextMillis <= millis()){  
+        Led led = ledStrip.leds.get(9);
         led.opacity = 127;
-        this.ledCount = 0;
         this.notePlayed = true;
       }
     }
