@@ -33,12 +33,12 @@ Serial myPort;
 //initialize
 void setup() {
   size(1080,720);
-  //myPort = new Serial(this, "COM3", 9600);
+  myPort = new Serial(this, "COM3", 9600);
   globalScene = "modeSelector";
   buttonSound = new SoundFile(this, "buttonSoundEffect.mp3");
   songFile1 = new SoundFile(this, "songs/Be Quiet And Drive.mp3");
   songFile2 = new SoundFile(this, "songs/Dear Rosemary.mp3");
-  int score = 0;
+  score = 0;
   int startPoint = CENTER_X;
   int ledStripSeparator = 80;
   int ledSeparator = 48;
@@ -65,8 +65,15 @@ void setup() {
           ledColor = BLUE;
         }
       }
-      Led led = new Led(ledStripX + 14, ledStripY + 8 + (j*ledSeparator), ledColor, (i*10) + j, opacity);
-      ledStrip.leds.add(led);
+      Led led;
+      if(i == 0 || i == 2) {
+        led = new Led(ledStripX + 14, ledStripY + 8 + (j*ledSeparator), ledColor, (i*10) + (9-j), opacity);
+        ledStrip.leds.add(led);      
+      }
+      else if(i == 1 || i == 3) {
+        led = new Led(ledStripX + 14, ledStripY + 8 + (j*ledSeparator), ledColor, (i*10) + j, opacity);
+        ledStrip.leds.add(led);
+      }  
     }
   }
   Button easyModeButton = new MenuButton(CENTER_X/2 - 200, CENTER_Y/2 - 70, 180, 60, "Easy","easy");
@@ -115,6 +122,58 @@ void setGradient(int x, int y, float w, float h, color c1, color c2) {
   }
 }
 
+void serialEvent(Serial myPort) {
+  try{
+    final String msg = myPort.readStringUntil('\n');    
+     if (msg == null) {
+       return;
+     } 
+    
+    int button = Integer.parseInt(msg);
+    if(button == 0) {
+      if(ledStrips.get(0).leds.get(9).on) {
+        println("Good Green! :)");
+        buttonSound.play(1, 0.05);
+        score++;
+      }
+      else{
+        println("Miss Green :("); 
+      }
+    }
+    else if(button == 1) {
+      if(ledStrips.get(1).leds.get(9).on) {
+        println("Good Red! :)");
+        buttonSound.play(1,0.05);
+        score++;
+      }
+      else{
+        println("Miss Red! :("); 
+      }
+    }
+    else if(button == 2) {
+      if(ledStrips.get(2).leds.get(9).on) {
+        println("Good Yellow! :)");
+        buttonSound.play(1, 0.05);
+        score++;
+      }
+      else{
+        println("Miss Yellow :("); 
+      }
+    }
+    else if(button == 3) {
+      if(ledStrips.get(button).leds.get(9).on) {
+        println("Good Blue! :)");
+        buttonSound.play(1, 0.05);
+        score++;
+      }
+      else{
+        println("Miss Blue :("); 
+      }
+    }
+    
+  }catch(Exception e){}  
+}
+
 void mousePressed() {
   if(globalScene.equals("modeSelector")) {
     for(Button bt : modeButtons){
@@ -140,7 +199,6 @@ void mousePressed() {
 }
 
 void keyPressed() {
-  
   if(key == 'q' || key == 'Q') {
     if(ledStrips.get(0).leds.get(9).on) {
       println("Good Green! :)");
@@ -357,6 +415,8 @@ class MenuButton extends Button {
   
   void onClick() {
     globalScene = this.scene;
+    songFile1.stop();
+    songFile2.stop();
   }
 }
 
@@ -367,6 +427,7 @@ class PlayButton extends Button {
   }
   
   void onClick() {
+    myPort.write(50);
     if(globalScene.equals("hard")) {
       playSong();
     }
@@ -537,8 +598,6 @@ class Note {
   int nextMillis;
   boolean followUp;
   int delayBtLeds;
-  //easy -> followUp var
-  //hard -> delay between leds = 200
   
   public Note(int position, int column, float delay, boolean followUp) {
     this.position = position;
@@ -574,8 +633,9 @@ class Note {
       Led led = ledStrip.leds.get(this.ledCount);
       if(this.column == 0) {
         if(this.nextMillis <= millis()){
+          //println(led.ledPos);
+          myPort.write(led.ledPos);
           this.nextMillis = millis() + this.delayBtLeds;
-          //myPort.write(led.ledPos);
           led.changeColor(GREEN);
           led.opacity = 255;
           led.on = true;
@@ -591,8 +651,8 @@ class Note {
       }
       else if(this.column == 1) {
         if(nextMillis <= millis()){
+          myPort.write(led.ledPos);
           this.nextMillis = millis() + this.delayBtLeds;
-          //myPort.write(led.ledPos);
           led.changeColor(RED);
           led.opacity = 255;
           led.on = true;
@@ -608,8 +668,8 @@ class Note {
       }
       else if(this.column == 2) {
         if(this.nextMillis <= millis()){
+          myPort.write(led.ledPos);
           this.nextMillis = millis() + this.delayBtLeds;
-          //myPort.write(led.ledPos);
           led.changeColor(YELLOW);
           led.opacity = 255;
           led.on = true;
@@ -625,8 +685,8 @@ class Note {
       }
       else {
         if(this.nextMillis <= millis()){
+          myPort.write(led.ledPos);
           this.nextMillis = millis() + this.delayBtLeds;
-          //myPort.write(led.ledPos);
           led.changeColor(BLUE);
           led.opacity = 255;
           led.on = true;
