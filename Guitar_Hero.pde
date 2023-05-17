@@ -124,12 +124,12 @@ void setGradient(int x, int y, float w, float h, color c1, color c2) {
 
 void serialEvent(Serial myPort) {
   try{
-    final String msg = myPort.readStringUntil('\n');    
+    final String msg = myPort.readString();    
      if (msg == null) {
        return;
      } 
-    
-    int button = Integer.parseInt(msg);
+    int button = Integer.parseInt(join(split(msg, " "),""));
+    //int button = Integer.parseInt(msg);
     if(button == 0) {
       if(ledStrips.get(0).leds.get(9).on) {
         println("Good Green! :)");
@@ -161,7 +161,7 @@ void serialEvent(Serial myPort) {
       }
     }
     else if(button == 3) {
-      if(ledStrips.get(button).leds.get(9).on) {
+      if(ledStrips.get(3).leds.get(9).on) {
         println("Good Blue! :)");
         buttonSound.play(1, 0.05);
         score++;
