@@ -30,10 +30,12 @@ String globalScene;
 
 Serial myPort;
 
+
 //initialize
 void setup() {
   size(1080,720);
-  myPort = new Serial(this, "COM3", 9600);
+  myPort = new Serial(this, "COM4", 9600);
+
   globalScene = "modeSelector";
   buttonSound = new SoundFile(this, "buttonSoundEffect.mp3");
   songFile1 = new SoundFile(this, "songs/Be Quiet And Drive.mp3");
@@ -122,58 +124,64 @@ void setGradient(int x, int y, float w, float h, color c1, color c2) {
   }
 }
 
+//buttons input manager
 void serialEvent(Serial myPort) {
   try{
     final String msg = myPort.readString();    
-     if (msg == null) {
-       return;
-     } 
-    int button = Integer.parseInt(join(split(msg, " "),""));
-    //int button = Integer.parseInt(msg);
-    if(button == 0) {
-      if(ledStrips.get(0).leds.get(9).on) {
-        println("Good Green! :)");
-        buttonSound.play(1, 0.05);
-        score++;
-      }
-      else{
-        println("Miss Green :("); 
-      }
+    if (msg == null) {
+      return;
+  } 
+  int button =Integer.parseInt(join(split(msg," "),""));
+  println(button);
+  if(button == 0) {
+    if(ledStrips.get(0).leds.get(9).on) {
+      println("Good Green! :)");
+      myPort.write(41);
+      buttonSound.play(1, 0.05);
+      score++;
     }
-    else if(button == 1) {
-      if(ledStrips.get(1).leds.get(9).on) {
-        println("Good Red! :)");
-        buttonSound.play(1,0.05);
-        score++;
-      }
-      else{
-        println("Miss Red! :("); 
-      }
+    else{
+      println("Miss Green :("); 
     }
-    else if(button == 2) {
-      if(ledStrips.get(2).leds.get(9).on) {
-        println("Good Yellow! :)");
-        buttonSound.play(1, 0.05);
-        score++;
-      }
-      else{
-        println("Miss Yellow :("); 
-      }
+  }
+  else if(button == 1) {
+    if(ledStrips.get(1).leds.get(9).on) {
+      println("Good Red! :)");
+      myPort.write(41);
+      buttonSound.play(1,0.05);
+      score++;
     }
-    else if(button == 3) {
-      if(ledStrips.get(3).leds.get(9).on) {
-        println("Good Blue! :)");
-        buttonSound.play(1, 0.05);
-        score++;
-      }
-      else{
-        println("Miss Blue :("); 
-      }
+    else{
+      println("Miss Red! :("); 
     }
-    
+  }
+  else if(button == 2) {
+    if(ledStrips.get(2).leds.get(9).on) {
+      println("Good Yellow! :)");
+      myPort.write(41);
+      buttonSound.play(1, 0.05);
+      score++;
+    }
+    else{
+      println("Miss Yellow :("); 
+    }
+  }
+  else if(button == 3) {
+    if(ledStrips.get(3).leds.get(9).on) {
+      println("Good Blue! :)");
+      myPort.write(41);
+      buttonSound.play(1, 0.05);
+      score++;
+    }
+    else{
+      println("Miss Blue :("); 
+    }
+  }
+  
   }catch(Exception e){}  
 }
 
+//mouse clicks manager
 void mousePressed() {
   if(globalScene.equals("modeSelector")) {
     for(Button bt : modeButtons){
@@ -198,6 +206,7 @@ void mousePressed() {
   }
 }
 
+//play with keys
 void keyPressed() {
   if(key == 'q' || key == 'Q') {
     if(ledStrips.get(0).leds.get(9).on) {
@@ -306,7 +315,6 @@ void drawNotes() {
 }
 
 void playSong() {
-  //delay(song.notes.get(0).delayBtLeds * 10);
   if(song.title.equals("Be Quiet and Drive (Far Away)")) {
     songFile1.play(1, 0.5);
   }
@@ -710,79 +718,3 @@ class Note {
     }
   }
 }
-
-/*
-//Thread class implemented to play notes with thread -> good try but threads doesn't work well in processing
-class NotePlayer extends Thread {
-  final Note nt;
-  
-  public NotePlayer(Note nt){
-    this.nt = nt;
-  }
-  
-  public void run() {
-    LedStrip ledStrip = ledStrips.get(this.nt.column);
-    println("playing");
-    for(int i = 0; i < 10; i++) {
-      if(this.nt.column == 0) {
-        Led led = ledStrip.leds.get(i);
-        synchronized(led) {
-          led.ledColor = GREEN;
-          led.opacity = 255;
-          delay(240);
-          if (i != 9) {
-            led.ledColor = WHITE;
-          }
-          else {
-            led.opacity = 127; 
-          }
-        }
-      }
-      else if(this.nt.column == 1) {
-        Led led = ledStrip.leds.get(i);
-        synchronized(led) {
-          led.ledColor = RED;
-          led.opacity = 255;
-          delay(240);
-          if (i != 9) {
-            led.ledColor = WHITE;
-          }
-          else {
-            led.opacity = 127; 
-          }
-        }
-      }
-      else if(this.nt.column == 2) {
-        Led led = ledStrip.leds.get(i);
-        synchronized(led) {
-          led.ledColor = YELLOW;
-          led.opacity = 255;
-          delay(240);
-          if (i != 9) {
-            led.ledColor = WHITE;
-          }
-          else {
-            led.opacity = 127; 
-          }
-        }
-      }
-      else {
-        Led led = ledStrip.leds.get(i);
-        synchronized(led) {
-          led.ledColor = BLUE;
-          led.opacity = 255;
-          delay(240);
-          if (i != 9) {
-            led.ledColor = WHITE;
-          }
-          else {
-            led.opacity = 127; 
-          }
-        }
-      }
-    }
-    nt.notePlayed = true;
-    println("played");
-  }
-}
-*/
